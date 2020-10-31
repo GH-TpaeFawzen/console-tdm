@@ -51,9 +51,9 @@ fallback(){
 get_needs(){
     local _type
     _type="$(file -p --mime-type "$1" | awk '{print $2}' | cut -d'/' -f1)"
-    if [ "${_type}" == "text" ]; then
+    case "$_type" in (text)
         grep '#[ \t]*needs[ \t]*:' "$1"|sed -e 's/#.*://g'
-    fi
+    esac
 }
 
 valid_item(){
@@ -85,42 +85,42 @@ eval set -- "$(
     echo usage
     )"
 
-if [ "$CONFDIR" == "$HOME/.tdm" ] ; then
+case "$CONFDIR" in ("$HOME/.tdm")
     echo "Following tdm v1.3.0, the configuration files should be moved to '${XDG_CONFIG_HOME:-$HOME/.config}/tdm' in order to become XDG compliant"
     echo "Use 'tdmctl migrate' to automatically migrate your configuration to the new location"
     echo "Support for the old configuration directory ($CONFDIR) will be dropped in tdm 2.x.y"
-fi
+esac
 
-if [ -z "$XDG_VTNR" ]; then
+case "$XDG_VTNR" in ('')
     XDG_VTNR="$(tty | sed -n -e 's|^/dev/tty\([1-9][0-9]*\)|\1|p')"
     export XDG_VTNR
-fi
+esac
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        '--xstart')
+        ('--xstart')
             xstart=true
         ;;
-        '--disable-xrunning-check')
+        ('--disable-xrunning-check')
             xrunning_check=false
         ;;
-        '--silent')
+        ('--silent')
             silent=true
         ;;
-        '--help'|'-h')
+        ('--help'|'-h')
             usage 0
         ;;
-        '--disable-long-names')
+        ('--disable-long-names')
             disable_long_names=true
         ;;
-        '--skip-single-session')
+        ('--skip-single-session')
             skip_single_session=true
         ;;
-        '--')
+        ('--')
             shift
             break
         ;;
-        *)
+        (*)
             >&2 printf 'Whoops, option "%s" is not yet implemented!\n' "$1"
             exit 42
         ;;
@@ -128,10 +128,10 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-if [ $# -gt 0 ]; then
+case $# in ([!0])
   >&2 echo 'Too many arguments.'
   exit 2
-fi
+esac
 
 # started from startx, so start session
 if "$xstart" ; then
@@ -215,17 +215,17 @@ if [ -d "${EXTRA}" ]; then
     done
 fi
 
-if [ $TOTAL -eq 0 ]; then
+case $TOTAL in (0)
     $hide_xsessions && fallback "X started."
     fallback "No sessions found."
-fi
+esac
 
 tdm_curses(){
     tempfile="/tmp/tdm_$$"
     trap 'rm -f ${tempfile}' 0 1 2 3 6 14 15
     dialog "${DEFOPT[@]}" --menu "TDM ${VERSION}" 0 0 0 "${prglist[@]}" 2>${tempfile}
     sid=$(cat ${tempfile})
-    [ -n "$sid" ]||fallback "Falling back to shell."
+    case "$sid" in ('') fallback "Falling back to shell."; esac
 }
 
 tdm_text(){
@@ -239,7 +239,7 @@ tdm_text(){
         (( _i=_i+1 ))
     done
 
-    echo -n "Program ID: "
+    printf "Program ID: "
     read -r sid
 }
 
@@ -250,11 +250,11 @@ elif [ ! "${TDMUI}" == "tdm_text" ]; then
     TDMUI=tdm_curses
 fi
 echo "TOTOAL $TOTAL"
-if [ "$skip_single_session" == "true" ] && [ "$TOTAL" -eq 1 ] ; then
+case "$skip_single_session $TOTAL" in (true 1)
     sid=0
-else
+;;(*)
     ${TDMUI}
-fi
+;;esac
 
 rm -f /tmp/tdmdefault
 if [[ (-n $sid) && ($sid -lt $TOTAL) && ($sid -ge $XID) ]]; then
